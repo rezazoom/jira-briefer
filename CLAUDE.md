@@ -44,6 +44,7 @@ python3 jira-briefer.py --user <your-username> --date 2026-08-31 --html
 - `requests` — HTTP client for Jira API
 - `python-dotenv` — `.env` file loading (optional, gracefully skipped if missing)
 - `prompt_toolkit` — Interactive keyboard menu
+- `jdatetime` — Shamsi (Jalali) date conversion for the HTML report (optional, gracefully skipped if missing)
 
 ## Common Tasks
 

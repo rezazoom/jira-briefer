@@ -25,7 +25,7 @@ git clone <repo-url>
 cd ava-jira-briefer
 
 # Install dependencies
-pip install requests python-dotenv prompt_toolkit
+pip install requests python-dotenv prompt_toolkit jdatetime
 
 # Configure credentials
 cp .env.example .env

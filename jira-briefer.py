@@ -28,6 +28,11 @@ try:
 except ImportError:
     load_dotenv = None
 
+try:
+    import jdatetime
+except ImportError:
+    jdatetime = None
+
 # ─── Config ───────────────────────────────────────────────────────────────────
 # Load .env from the script's directory
 base_dir = Path(__file__).resolve().parent
@@ -223,8 +228,12 @@ def generate_html(date_str, user, active_issues, total_field_changes, total_comm
         return 0
 
     report_date = date_str
+    shamsi_date = ""
     try:
-        report_date = datetime.strptime(date_str, "%Y-%m-%d").strftime("%A %d %B %Y")
+        dt = datetime.strptime(date_str, "%Y-%m-%d")
+        report_date = dt.strftime("%A %d %B %Y")
+        if jdatetime:
+            shamsi_date = jdatetime.date.fromgregorian(date=dt).strftime("%A %d %B %Y")
     except Exception:
         pass
 
@@ -336,6 +345,7 @@ def generate_html(date_str, user, active_issues, total_field_changes, total_comm
         "{{__USER__}}": esc(user),
         "{{__DATE__}}": esc(date_str),
         "{{__REPORT_DATE__}}": esc(report_date),
+        "{{__SHAMSI_DATE__}}": esc(shamsi_date),
         "{{__NUM_ISSUES__}}": str(len(active_issues)),
         "{{__FIELD_CHANGES__}}": str(total_field_changes),
         "{{__COMMENTS__}}": str(total_comments),
