@@ -11,17 +11,16 @@ Or pass CLI flags directly (menu is skipped):
     python3 jira-briefer.py --base-url https://jira.example.com
 """
 
-import requests
-import json
 import argparse
-import os
-import sys
 import html
+import os
 import subprocess
+import sys
 import webbrowser
-from pathlib import Path
 from datetime import datetime, timedelta
-from collections import defaultdict
+from pathlib import Path
+
+import requests
 
 try:
     from dotenv import load_dotenv
@@ -519,10 +518,9 @@ def gather_activity(session, base_url, username, target_date):
 def print_report(date_str, username, active_issues, total_field_changes, total_comments,
                  colors=True):
     """Print a plain-text console report."""
-    BOLD = RED = GREEN = YELLOW = CYAN = RESET = DIM = ""
+    BOLD = GREEN = YELLOW = CYAN = RESET = DIM = ""
     if colors:
         BOLD = "\033[1m"
-        RED = "\033[91m"
         GREEN = "\033[92m"
         YELLOW = "\033[93m"
         CYAN = "\033[96m"
@@ -657,12 +655,12 @@ def menu_choose(options, title):
 
     @kb.add("up")
     @kb.add("k")
-    def up(event):
+    def up(_event):
         position[0] = (position[0] - 1) % len(options)
 
     @kb.add("down")
     @kb.add("j")
-    def down(event):
+    def down(_event):
         position[0] = (position[0] + 1) % len(options)
 
     @kb.add("enter")
@@ -716,7 +714,7 @@ def cmd_cli(argv):
 def run_menu():
     """Endless interactive menu loop."""
     from prompt_toolkit import prompt
-    from prompt_toolkit.shortcuts import message_dialog, input_dialog
+    from prompt_toolkit.shortcuts import input_dialog
 
     # Load current config from .env
     username = os.getenv("JIRA_USERNAME", DEFAULT_USER)

@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-09-01
+
+### Changed
+
+- Removed internal `jira.rahbal.site` default and `r.esmaeili` username from the source and docs; the base URL is now required via `.env` or `--base-url`, with a clear error when missing
+- Rewrote repository history to scrub internal URLs/identifiers and force-pushed to both remotes
+- Cleaned up unused imports and variables flagged by Pylint
+
+### Added
+
+- Pylint code quality check via GitHub Actions (`.github/workflows/lint.yml`)
+- Pragmatic `.pylintrc` configuration tailored to the single-file, lazy-import architecture
+
 ## [0.2.1] - 2026-09-01
 
 ### Added
