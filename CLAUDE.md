@@ -36,7 +36,7 @@ Jira Daily Briefer — a single-file Python CLI tool (`jira-briefer.py`, ~617 li
 python3 jira-briefer.py
 
 # Run with CLI flags (skips menu)
-python3 jira-briefer.py --user <your-username> --date 2026-08-31 --html
+python3 jira-briefer.py --user <username> --date 2026-08-31 --html
 ```
 
 ## Dependencies
@@ -51,7 +51,7 @@ python3 jira-briefer.py --user <your-username> --date 2026-08-31 --html
 - **Adding a new CLI flag:** Add to the `argparse` section (~line 500) and wire it into `cmd_cli()` and `run_menu()`
 - **Adding a new Jira field:** Update the `fields` parameter in `fetch_all_issues()` and add rendering in `render_console()` / `render_html()`
 - **Modifying HTML output:** Edit `template.html` and update the token replacement in `render_html()`
-- **Changing default config:** Update `DEFAULT_BASE_URL`, `DEFAULT_USER`, or the `.env` loading logic near the top of the file
+- **Changing config loading:** Update `DEFAULT_BASE_URL`, `DEFAULT_USER`, or the `.env` loading logic near the top of the file (defaults are left empty on purpose; values come from `.env` or CLI flags)
 
 ## Security
 

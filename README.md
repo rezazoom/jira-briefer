@@ -52,7 +52,7 @@ Use arrow keys or `j`/`k` to navigate, `Enter` to select.
 
 ```bash
 # Report for a specific user and date
-python3 jira-briefer.py --user <your-username> --date 2026-08-31
+python3 jira-briefer.py --user <username> --date 2026-08-31
 
 # Generate HTML report
 python3 jira-briefer.py --html
@@ -61,17 +61,17 @@ python3 jira-briefer.py --html
 python3 jira-briefer.py --base-url https://jira.example.com
 
 # Combine flags
-python3 jira-briefer.py --user <your-username> --date 2026-08-31 --html
+python3 jira-briefer.py --user <username> --date 2026-08-31 --html
 ```
 
 ### CLI Flags
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--user` | Jira username | From `.env` or `<your-username>` |
+| `--user` | Jira username | From `.env` |
 | `--date` | Target date (`YYYY-MM-DD`) | Yesterday |
 | `--html` | Output as HTML instead of console | `console` |
-| `--base-url` | Jira server URL | From `.env` or `https://jira.example.com` |
+| `--base-url` | Jira server URL | From `.env` (required) |
 | `--out-dir` | Directory for HTML reports | `./reports` |
 | `--no-color` | Disable ANSI colors in console output | Colors enabled |
 | `--menu` | Force the interactive menu | — |
@@ -83,7 +83,7 @@ All settings are stored in `.env`:
 ```env
 JIRA_USERNAME=<your-username>
 JIRA_TOKEN=your_personal_access_token
-JIRA_BASE_URL=https://jira.example.com
+JIRA_BASE_URL=https://jira.your-company.com
 JIRA_OUTPUT_FORMAT=console
 ```
 
@@ -100,13 +100,12 @@ JIRA_OUTPUT_FORMAT=console
 
 ## Remotes
 
-The project is published to two remotes via a single `origin` with stacked push
-URLs — `git push` updates both at once:
+The project is published to GitHub and mirrored to an internal Git server via a
+single `origin` with stacked push URLs — `git push` updates all of them at once:
 
 - GitHub: `git@github.com:rezazoom/jira-briefer.git`
-- Internal Gitea: `(internal mirror)`
 
-Fetch uses the internal Gitea by default. To see the setup:
+To see the configured remotes:
 
 ```bash
 git remote -v

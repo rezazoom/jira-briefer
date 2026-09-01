@@ -6,7 +6,7 @@ Runs an interactive keyboard menu by default:
     python3 jira-briefer.py
 
 Or pass CLI flags directly (menu is skipped):
-    python3 jira-briefer.py --user <your-username> --date 2026-08-31
+    python3 jira-briefer.py --user <username> --date 2026-08-31
     python3 jira-briefer.py --html
     python3 jira-briefer.py --base-url https://jira.example.com
 """
@@ -39,8 +39,8 @@ base_dir = Path(__file__).resolve().parent
 if load_dotenv:
     load_dotenv(base_dir / ".env")
 
-DEFAULT_BASE_URL = "https://jira.example.com"
-DEFAULT_USER = os.getenv("JIRA_USERNAME", "<your-username>")
+DEFAULT_BASE_URL = os.getenv("JIRA_BASE_URL", "")
+DEFAULT_USER = os.getenv("JIRA_USERNAME", "")
 
 BOLD = "\033[1m"
 RESET = "\033[0m"
@@ -700,6 +700,10 @@ def cmd_cli(argv):
                         help="Generate and open an HTML report instead of console text")
     parser.add_argument("--out-dir", default=None, help="Directory to save the HTML report")
     args = parser.parse_args(argv)
+
+    if not args.base_url:
+        print("Error: no JIRA_BASE_URL configured. Set it in .env or pass --base-url.")
+        sys.exit(1)
 
     target_date = datetime.now() - timedelta(days=1)
     if args.date:
