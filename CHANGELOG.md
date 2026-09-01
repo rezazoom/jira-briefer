@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Bumped CI actions to Node 24 versions (`actions/checkout@v5`, `actions/setup-python@v6`)
 - Removed internal `jira.rahbal.site` default and `r.esmaeili` username from the source and docs; the base URL is now required via `.env` or `--base-url`, with a clear error when missing
 - Rewrote repository history to scrub internal URLs/identifiers and force-pushed to both remotes
 - Cleaned up unused imports and variables flagged by Pylint
