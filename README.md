@@ -98,6 +98,20 @@ JIRA_OUTPUT_FORMAT=console
 └── reports/           # Generated HTML reports (gitignored)
 ```
 
+## Remotes
+
+The project is published to two remotes via a single `origin` with stacked push
+URLs — `git push` updates both at once:
+
+- GitHub: `git@github.com:rezazoom/jira-briefer.git`
+- Internal Gitea: `(internal mirror)`
+
+Fetch uses the internal Gitea by default. To see the setup:
+
+```bash
+git remote -v
+```
+
 ## License
 
 Personal use.
