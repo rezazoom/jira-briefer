@@ -67,7 +67,7 @@ def fetch_all_issues(session: requests.Session, base_url: str, jql: str) -> list
             "startAt": start_at,
             "maxResults": max_results,
             "expand": "changelog",
-            "fields": "summary,status,assignee,priority,issuetype,project",
+            "fields": "summary,status,assignee,priority,issuetype,project,parent",
         }
         resp = session.get(url, params=params)
         resp.raise_for_status()
@@ -80,6 +80,18 @@ def fetch_all_issues(session: requests.Session, base_url: str, jql: str) -> list
             break
 
     return all_issues
+
+
+def fetch_issue(session: requests.Session, base_url: str, issue_key: str) -> dict:
+    """Fetch a single issue by key, including its changelog and parent."""
+    url = f"{base_url}/rest/api/2/issue/{issue_key}"
+    params = {
+        "expand": "changelog",
+        "fields": "summary,status,assignee,priority,issuetype,project,parent",
+    }
+    resp = session.get(url, params=params)
+    resp.raise_for_status()
+    return resp.json()
 
 
 def fetch_comments(session: requests.Session, base_url: str, issue_key: str) -> list:
@@ -155,6 +167,30 @@ def format_timestamp(ts: str) -> str:
         return ts[:16] if len(ts) >= 16 else ts
 
 
+def describe_action(act: dict) -> str:
+    """Short human-readable summary of a single activity (for the accordion title)."""
+    if act["type"] == "field_change":
+        return f"{act['field']}: {act['from']} → {act['to']}"
+    body = act.get("body", "").replace("\n", " ").strip()
+    if len(body) > 40:
+        body = body[:40] + "…"
+    return body or "comment"
+
+
+def last_action(activities: list) -> dict:
+    """Return the most recent activity (by timestamp), or None."""
+    if not activities:
+        return None
+    return max(activities, key=lambda x: x.get("timestamp", ""))
+
+
+def render_acc_title(ts: str, action: dict) -> str:
+    """Accordion title text: last-action time + short description."""
+    time_part = esc(format_timestamp(ts)) if ts else ""
+    desc = esc(describe_action(action))
+    return f"{time_part} · {desc}"
+
+
 # ─── HTML Report ──────────────────────────────────────────────────────────────
 def esc(text):
     return html.escape(str(text), quote=True)
@@ -172,14 +208,27 @@ def generate_html(date_str, user, active_issues, total_field_changes, total_comm
             return "prio-low"
         return "prio-medium"
 
+    def priority_rank(priority):
+        p = (priority or "").lower()
+        if "highest" in p or "critical" in p:
+            return 5
+        if "high" in p:
+            return 4
+        if "medium" in p:
+            return 3
+        if "low" in p:
+            return 2
+        if "lowest" in p:
+            return 1
+        return 0
+
     report_date = date_str
     try:
         report_date = datetime.strptime(date_str, "%Y-%m-%d").strftime("%A %d %B %Y")
     except Exception:
         pass
 
-    items_html = []
-    for i, (key, summary, status, priority, issuetype, assignee, activities) in enumerate(active_issues):
+    def activities_html(activities):
         acts_html = []
         for act in activities:
             ts = format_timestamp(act["timestamp"])
@@ -198,19 +247,82 @@ def generate_html(date_str, user, active_issues, total_field_changes, total_comm
                     f'<span class="badge badge-comment">Comment</span>'
                     f'<span class="comment-body">{body}</span></div>'
                 )
+        return "".join(acts_html)
+
+    items_html = []
+    for i, group in enumerate(active_issues):
+        key, summary = group["key"], group["summary"]
+        status, priority = group["status"], group["priority"]
+        issuetype, assignee = group["issuetype"], group["assignee"]
+
+        # Compute the most recent activity across the group for the header.
+        all_group = list(group["activities"])
+        for child in group["children"]:
+            all_group.extend(child["activities"])
+        title_act = last_action(all_group)
+        title_ts = title_act.get("timestamp", "") if title_act else ""
+        title_text = render_acc_title(title_ts, title_act) if title_act else "No activity"
+
+        meta_line = f'Status: <b>{esc(status)}</b> &nbsp;|&nbsp; Assignee: <b>{esc(assignee)}</b>'
+
+        body_parts = [f'<div class="meta">{meta_line}</div>']
+        if group["activities"]:
+            body_parts.append(activities_html(group["activities"]))
+        else:
+            body_parts.append('<div class="meta dim">(no direct activity — via sub-task)</div>')
+
+        children_html = []
+        for child in group["children"]:
+            child_act = last_action(child["activities"])
+            child_title = render_acc_title(
+                child_act.get("timestamp", "") if child_act else "", child_act) if child_act else ""
+            child_html = (
+                f'<div class="sub-item">'
+                f'<div class="sub-head">'
+                f'<span class="sub-badge">Sub-task</span>'
+                f'<span class="key">{esc(child["key"])}</span>'
+                f'<span class="type">{esc(child["issuetype"])}</span>'
+                f'<span class="prio {priority_class(child["priority"])}">{esc(child["priority"])}</span>'
+                f'<span class="acc-title">{esc(child["summary"])}</span>'
+                f'</div>'
+                f'<div class="sub-meta">Status: <b>{esc(child["status"])}</b> &nbsp;|&nbsp; '
+                f'Assignee: <b>{esc(child["assignee"])}</b></div>'
+                f'<div class="sub-last">Last: {child_title}</div>'
+                f'{activities_html(child["activities"])}'
+                f'</div>'
+            )
+            children_html.append(child_html)
+
+        body_parts.extend(children_html)
+
+        # Combined searchable text: parent + all sub-tasks (keys + titles).
+        search_parts = [key, summary]
+        for child in group["children"]:
+            search_parts.extend([child["key"], child["summary"]])
+        search_text = " ".join(search_parts)
 
         items_html.append(f"""
-      <div class="acc-item">
-        <div class="acc-head" data-acc="{i}">
+      <div class="acc-item"
+           data-key="{esc(key)}"
+           data-title="{esc(summary.lower())}"
+           data-type="{esc(issuetype)}"
+           data-status="{esc(status)}"
+           data-assignee="{esc(assignee)}"
+           data-priority="{priority_rank(priority)}"
+           data-prio-name="{esc(priority)}"
+           data-last-ts="{esc(title_ts)}"
+           data-search="{esc(search_text.lower())}"
+           data-acc="{i}">
+        <div class="acc-head">
           <span class="acc-arrow">▶</span>
           <span class="key">{esc(key)}</span>
           <span class="type">{esc(issuetype)}</span>
           <span class="prio {priority_class(priority)}">{esc(priority)}</span>
           <span class="acc-title">{esc(summary)}</span>
+          <span class="acc-last">{title_text}</span>
         </div>
         <div class="acc-body" id="acc-body-{i}">
-          <div class="meta">Status: <b>{esc(status)}</b> &nbsp;|&nbsp; Assignee: <b>{esc(assignee)}</b></div>
-          {"".join(acts_html)}
+          {"".join(body_parts)}
         </div>
       </div>""")
 
@@ -266,10 +378,108 @@ def build_session(username):
     return session, (bool(token) or bool(password) or bool(api_token))
 
 
+def extract_issue_record(session, base_url, username, issue):
+    """Turn a Jira issue dict into a record dict with meta + (filtered) activity.
+
+    Also captures parent info so sub-tasks can be grouped under their parent.
+    Activity is sorted ascending by timestamp.
+    """
+    key = issue["key"]
+    fields = issue["fields"]
+    summary = fields.get("summary", "")
+    status = fields.get("status", {}).get("name", "?")
+    priority = fields.get("priority", {}).get("name", "?")
+    issuetype = fields.get("issuetype", {}).get("name", "?")
+    assignee_obj = fields.get("assignee")
+    assignee = assignee_obj.get("displayName", "Unassigned") if assignee_obj else "Unassigned"
+
+    parent_obj = fields.get("parent")
+    parent_key = None
+    parent_summary = None
+    if parent_obj:
+        parent_key = parent_obj.get("key")
+        parent_summary = parent_obj.get("fields", {}).get("summary")
+
+    changelog = issue.get("changelog", {})
+    field_changes = filter_changelog_by_user(changelog, username)
+    try:
+        comments = fetch_comments(session, base_url, key)
+    except Exception:
+        comments = []
+    user_comments = filter_comments_by_user(comments, username)
+
+    all_activity = field_changes + user_comments
+    all_activity.sort(key=lambda x: x.get("timestamp", ""))
+
+    return {
+        "key": key,
+        "summary": summary,
+        "status": status,
+        "priority": priority,
+        "issuetype": issuetype,
+        "assignee": assignee,
+        "parent_key": parent_key,
+        "parent_summary": parent_summary,
+        "activities": all_activity,
+    }, len(field_changes), len(user_comments)
+
+
+def group_issues(session, base_url, username, records):
+    """Group sub-task records under their parent (the "original task").
+
+    - The parent is always included, even if it has no activity of its own.
+    - If the parent was not fetched above, fetch it now so it always appears.
+    - Returns a list of group dicts:
+        { meta..., activities: [...], children: [record, ...] }
+    """
+    by_key = {}
+    children = []
+    for rec in records:
+        if rec["parent_key"]:
+            children.append(rec)
+        else:
+            by_key[rec["key"]] = rec
+
+    # Ensure every parent referenced by a sub-task is present, fetching it if needed.
+    parent_keys = {c["parent_key"] for c in children}
+    for pkey in parent_keys:
+        if pkey not in by_key:
+            try:
+                issue = fetch_issue(session, base_url, pkey)
+                rec, _, _ = extract_issue_record(session, base_url, username, issue)
+                by_key[rec["key"]] = rec
+            except Exception:
+                # Bare group header if we cannot fetch the parent.
+                by_key[pkey] = {
+                    "key": pkey,
+                    "summary": "(parent)",
+                    "status": "?",
+                    "priority": "?",
+                    "issuetype": "?",
+                    "assignee": "?",
+                    "parent_key": None,
+                    "parent_summary": None,
+                    "activities": [],
+                }
+
+    groups = list(by_key.values())
+    groups.sort(key=lambda g: g["key"])
+    for g in groups:
+        g["children"] = [
+            c for c in children if c["parent_key"] == g["key"]
+        ]
+        g["children"].sort(key=lambda c: c["key"])
+    # Only keep groups that have their own activity or children.
+    groups = [g for g in groups if g["activities"] or g["children"]]
+    return groups
+
+
 def gather_activity(session, base_url, username, target_date):
     """Fetch + filter all activity for a user on a given day.
 
-    Returns (date_str, active_issues, total_field_changes, total_comments)
+    Sub-tasks are grouped under their parent (the "original task"), and the
+    parent is always included. Returns
+    (date_str, groups, total_field_changes, total_comments)
     """
     date_str = target_date.strftime("%Y-%m-%d")
     jql = jql_date_filter(target_date)
@@ -278,37 +488,19 @@ def gather_activity(session, base_url, username, target_date):
 
     total_field_changes = 0
     total_comments = 0
-    active_issues = []
+    records = []
 
     for issue in issues:
-        key = issue["key"]
-        summary = issue["fields"].get("summary", "")
-        status = issue["fields"].get("status", {}).get("name", "?")
-        priority = issue["fields"].get("priority", {}).get("name", "?")
-        issuetype = issue["fields"].get("issuetype", {}).get("name", "?")
-        assignee_obj = issue["fields"].get("assignee")
-        assignee = assignee_obj.get("displayName", "Unassigned") if assignee_obj else "Unassigned"
-
-        changelog = issue.get("changelog", {})
-        field_changes = filter_changelog_by_user(changelog, username)
-
-        try:
-            comments = fetch_comments(session, base_url, key)
-        except Exception:
-            comments = []
-        user_comments = filter_comments_by_user(comments, username)
-
-        all_activity = field_changes + user_comments
-        if not all_activity:
+        rec, nfc, nc = extract_issue_record(session, base_url, username, issue)
+        if not rec["activities"]:
             continue
+        total_field_changes += nfc
+        total_comments += nc
+        records.append(rec)
 
-        all_activity.sort(key=lambda x: x.get("timestamp", ""))
+    groups = group_issues(session, base_url, username, records)
 
-        total_field_changes += len(field_changes)
-        total_comments += len(user_comments)
-        active_issues.append((key, summary, status, priority, issuetype, assignee, all_activity))
-
-    return date_str, active_issues, total_field_changes, total_comments
+    return date_str, groups, total_field_changes, total_comments
 
 
 def print_report(date_str, username, active_issues, total_field_changes, total_comments,
@@ -328,24 +520,45 @@ def print_report(date_str, username, active_issues, total_field_changes, total_c
     print(f"{BOLD}{CYAN}  Jira Brief — {username} — {date_str}{RESET}")
     print(f"{BOLD}{CYAN}═══════════════════════════════════════════════{RESET}\n")
 
-    for key, summary, status, priority, issuetype, assignee, activities in active_issues:
-        print(f"{BOLD}{GREEN}  {key}{RESET}  {DIM}({issuetype}){RESET}  [{priority}]")
+    def print_activities(activities, indent="    "):
+        for act in activities:
+            ts = format_timestamp(act["timestamp"])
+            if act["type"] == "field_change":
+                print(f"{indent}{DIM}{ts}{RESET}  {BOLD}Field:{RESET}  {YELLOW}{act['field']}{RESET}")
+                print(f"{indent}          {DIM}{act['from']}{RESET}  →  {GREEN}{act['to']}{RESET}")
+            elif act["type"] == "comment":
+                print(f"{indent}{DIM}{ts}{RESET}  {BOLD}Comment:{RESET}")
+                body_lines = act["body"].split("\n")
+                for line in body_lines[:3]:
+                    print(f"{indent}          {DIM}{line}{RESET}")
+                if len(body_lines) > 3:
+                    print(f"{indent}          {DIM}...{RESET}")
+
+    for group in active_issues:
+        key, summary = group["key"], group["summary"]
+        status, priority = group["status"], group["priority"]
+        issuetype, assignee = group["issuetype"], group["assignee"]
+
+        title_act = last_action(list(group["activities"]) + [a for c in group["children"] for a in c["activities"]])
+        last_line = f"  → {format_timestamp(title_act['timestamp'])} {describe_action(title_act)}" if title_act else ""
+
+        print(f"{BOLD}{GREEN}  {key}{RESET}  {DIM}({issuetype}){RESET}  [{priority}]{DIM}{last_line}{RESET}")
         print(f"  {summary}")
         print(f"  Status: {status}  |  Assignee: {assignee}")
         print(f"  {'─' * 44}")
 
-        for act in activities:
-            ts = format_timestamp(act["timestamp"])
-            if act["type"] == "field_change":
-                print(f"    {DIM}{ts}{RESET}  {BOLD}Field:{RESET}  {YELLOW}{act['field']}{RESET}")
-                print(f"              {DIM}{act['from']}{RESET}  →  {GREEN}{act['to']}{RESET}")
-            elif act["type"] == "comment":
-                print(f"    {DIM}{ts}{RESET}  {BOLD}Comment:{RESET}")
-                body_lines = act["body"].split("\n")
-                for line in body_lines[:3]:
-                    print(f"              {DIM}{line}{RESET}")
-                if len(body_lines) > 3:
-                    print(f"              {DIM}...{RESET}")
+        if group["activities"]:
+            print_activities(group["activities"])
+        else:
+            print(f"  {DIM}(no direct activity — via sub-task){RESET}")
+
+        for child in group["children"]:
+            clast = last_action(child["activities"])
+            clast_line = f"  → {format_timestamp(clast['timestamp'])} {describe_action(clast)}" if clast else ""
+            print(f"  {BOLD}↳ {child['key']}{RESET}  {DIM}({child['issuetype']}){RESET}  [{child['priority']}]{DIM}{clast_line}{RESET}")
+            print(f"    {child['summary']}")
+            print_activities(child["activities"], indent="      ")
+
         print()
 
     print(f"{BOLD}{CYAN}═══════════════════════════════════════════════{RESET}")

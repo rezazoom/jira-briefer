@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.2.0] - 2026-09-01
+
+### Added
+
+- Interactive JS sort & filter toolbar in the HTML report: free-text search, and filters for priority, issue type and assignee
+- Sorting by task name, key, priority, status, assignee or last-action time, with ascending/descending toggle
+- Priority is now the default sort (highest first)
+- Sub-tasks are grouped under their parent (the "original") task, and the parent is always included even when it has no activity of its own
+- Accordion header now shows the last action performed by the user; the rest of the activity is shown inside the accordion content
+
 ## [0.1.0] - 2026-08-31
 
 ### Added
