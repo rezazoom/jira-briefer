@@ -233,7 +233,10 @@ def generate_html(date_str, user, active_issues, total_field_changes, total_comm
         dt = datetime.strptime(date_str, "%Y-%m-%d")
         report_date = dt.strftime("%A %d %B %Y")
         if jdatetime:
-            shamsi_date = jdatetime.date.fromgregorian(date=dt).strftime("%A %d %B %Y")
+            jd = jdatetime.date.fromgregorian(date=dt)
+            jweek = jdatetime.date.j_weekdays_fa[jd.weekday()]
+            jmonth = jdatetime.date.j_months_fa[jd.month - 1]
+            shamsi_date = f"{jweek} {jd.day} {jmonth} {jd.year}"
     except Exception:
         pass
 
