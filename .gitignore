@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Environment / secrets
+.env
+
+# Generated reports
+reports/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
