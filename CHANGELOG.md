@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Issue keys and summaries in the HTML report now link to the original Jira task (`{base_url}/browse/{KEY}`), opening in a new tab, for both parent tasks and sub-tasks
 
+### Fixed
+
+- The interactive menu no longer wipes Jira auth tokens from `.env` when changing settings/output format; existing `JIRA_TOKEN`, `JIRA_PASSWORD`, and `JIRA_API_TOKEN` values are preserved
+
 ## [0.3.0] - 2026-09-01
 
 ### Changed
