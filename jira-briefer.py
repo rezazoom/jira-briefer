@@ -52,10 +52,9 @@ DIM = "\033[2m"
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 def jql_date_filter(target_date: datetime) -> str:
-    """Build JQL date range for a given day (start to end)."""
+    """Build JQL date range from a given day up to the request moment."""
     start = target_date.strftime("%Y-%m-%d")
-    end = (target_date + timedelta(days=1)).strftime("%Y-%m-%d")
-    return f'updated >= "{start}" AND updated < "{end}"'
+    return f'updated >= "{start}" AND updated <= now()'
 
 
 def fetch_all_issues(session: requests.Session, base_url: str, jql: str) -> list:
