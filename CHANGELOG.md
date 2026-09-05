@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Issue keys and summaries in the HTML report now link to the original Jira task (`{base_url}/browse/{KEY}`), opening in a new tab, for both parent tasks and sub-tasks
+- Arad variable font (v1.0.1, SIL OFL 1.1) is now embedded as a base64 data URI in the HTML template, so reports render in Arad on any machine — no local font install needed
 
 ### Fixed
 
