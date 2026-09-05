@@ -720,10 +720,18 @@ def cmd_cli(argv):
                html=args.html, out_dir=args.out_dir, colors=not args.no_color)
 
 
+def clear_screen():
+    """Clear the terminal screen."""
+    sys.stdout.write("\033[2J\033[H")
+    sys.stdout.flush()
+
+
 def run_menu():
     """Endless interactive menu loop."""
     from prompt_toolkit import prompt
     from prompt_toolkit.shortcuts import input_dialog
+
+    clear_screen()
 
     # Load current config from .env
     username = os.getenv("JIRA_USERNAME", DEFAULT_USER)
@@ -776,6 +784,7 @@ def run_menu():
         idx = menu_choose(choices, "")
 
         if idx is None:
+            clear_screen()
             print("\nBye!")
             return
 
@@ -845,6 +854,7 @@ def run_menu():
 
         # 5: Exit
         else:
+            clear_screen()
             print("Bye!")
             return
 

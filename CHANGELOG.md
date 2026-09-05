@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The interactive menu no longer wipes Jira auth tokens from `.env` when changing settings/output format; existing `JIRA_TOKEN`, `JIRA_PASSWORD`, and `JIRA_API_TOKEN` values are preserved
 
+### Changed
+
+- Interactive menu now clears the terminal on startup and before exiting
+
 ## [0.3.0] - 2026-09-01
 
 ### Changed
