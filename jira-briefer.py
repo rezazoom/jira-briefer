@@ -710,7 +710,11 @@ def cmd_cli(argv):
 
     target_date = datetime.now() - timedelta(days=1)
     if args.date:
-        target_date = datetime.strptime(args.date, "%Y-%m-%d")
+        try:
+            target_date = datetime.strptime(args.date, "%Y-%m-%d")
+        except ValueError:
+            print("Error: invalid date. Use YYYY-MM-DD format (e.g. 2026-09-04).")
+            sys.exit(1)
 
     run_report(args.base_url, args.user, target_date,
                html=args.html, out_dir=args.out_dir, colors=not args.no_color)
