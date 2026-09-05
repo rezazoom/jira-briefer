@@ -200,7 +200,8 @@ def esc(text):
     return html.escape(str(text), quote=True)
 
 
-def generate_html(date_str, user, active_issues, total_field_changes, total_comments):
+def generate_html(date_str, user, active_issues, total_field_changes, total_comments,
+                  base_url):
     """Build a self-contained HTML report with accordion boxes."""
     def priority_class(priority):
         p = (priority or "").lower()
@@ -238,6 +239,9 @@ def generate_html(date_str, user, active_issues, total_field_changes, total_comm
             shamsi_date = f"{jweek} {jd.day} {jmonth} {jd.year}"
     except Exception:
         pass
+
+    def issue_url(key):
+        return f"{base_url.rstrip('/')}/browse/{key}"
 
     def activities_html(activities):
         acts_html = []
@@ -291,10 +295,10 @@ def generate_html(date_str, user, active_issues, total_field_changes, total_comm
                 f'<div class="sub-item">'
                 f'<div class="sub-head">'
                 f'<span class="sub-badge">Sub-task</span>'
-                f'<span class="key">{esc(child["key"])}</span>'
+                f'<span class="key"><a href="{issue_url(child["key"])}" target="_blank" rel="noopener">{esc(child["key"])}</a></span>'
                 f'<span class="type">{esc(child["issuetype"])}</span>'
                 f'<span class="prio {priority_class(child["priority"])}">{esc(child["priority"])}</span>'
-                f'<span class="acc-title">{esc(child["summary"])}</span>'
+                f'<span class="acc-title"><a href="{issue_url(child["key"])}" target="_blank" rel="noopener">{esc(child["summary"])}</a></span>'
                 f'</div>'
                 f'<div class="sub-meta">Status: <b>{esc(child["status"])}</b> &nbsp;|&nbsp; '
                 f'Assignee: <b>{esc(child["assignee"])}</b></div>'
@@ -326,10 +330,10 @@ def generate_html(date_str, user, active_issues, total_field_changes, total_comm
            data-acc="{i}">
         <div class="acc-head">
           <span class="acc-arrow">▶</span>
-          <span class="key">{esc(key)}</span>
+          <span class="key"><a href="{issue_url(key)}" target="_blank" rel="noopener">{esc(key)}</a></span>
           <span class="type">{esc(issuetype)}</span>
           <span class="prio {priority_class(priority)}">{esc(priority)}</span>
-          <span class="acc-title">{esc(summary)}</span>
+          <span class="acc-title"><a href="{issue_url(key)}" target="_blank" rel="noopener">{esc(summary)}</a></span>
           <span class="acc-last">{title_text}</span>
         </div>
         <div class="acc-body" id="acc-body-{i}">
@@ -581,10 +585,10 @@ def print_report(date_str, username, active_issues, total_field_changes, total_c
 
 
 def write_html_report(date_str, username, active_issues, total_field_changes,
-                      total_comments, out_dir=None):
+                      total_comments, base_url, out_dir=None):
     """Write the HTML report to disk and return its path."""
     page = generate_html(date_str, username, active_issues,
-                         total_field_changes, total_comments)
+                         total_field_changes, total_comments, base_url)
     out_path = Path(out_dir) if out_dir else Path.cwd()
     out_path.mkdir(parents=True, exist_ok=True)
     file_path = out_path / f"jira-brief-{username}-{date_str}.html"
@@ -609,7 +613,8 @@ def run_report(base_url, username, target_date, html=False, out_dir=None, colors
         return "error"
 
     if html:
-        path = write_html_report(date_str, username, active_issues, tfc, tc, out_dir)
+        path = write_html_report(date_str, username, active_issues, tfc, tc,
+                                 base_url, out_dir)
         print(f"{GREEN}Saved: {path}{RESET}" if colors else f"Saved: {path}")
         open_in_browser(path)
     else:

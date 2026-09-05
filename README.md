@@ -8,7 +8,7 @@ A personal CLI tool that generates daily activity reports from Jira. It queries 
 - **Per-User Filtering** — Shows only changes and comments made by the specified user
 - **Two Output Formats:**
   - **Console** — Color-coded plain-text report grouped by issue
-  - **HTML** — Self-contained, styled, RTL/Persian report with accordion UI and stat cards
+  - **HTML** — Self-contained, styled, RTL/Persian report with accordion UI, stat cards, and clickable links to each Jira task
 - **Interactive Keyboard Menu** — Navigate with arrow keys, j/k, Enter
 - **Report Archive** — Saves generated HTML reports to `reports/` directory
 
